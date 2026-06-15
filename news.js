@@ -75,6 +75,11 @@ async function fetchNews(query = "", category = "") {
       data = JSON.parse(wrapper.contents);
     }
     
+    // Ignore results if user changed tabs or typed another search while request was in-flight
+    if (category !== currentCategory || query !== currentQuery) {
+      return;
+    }
+    
     // Handle NewsAPI backend errors returned through the proxy
     if (data.status === "error") {
       if (data.code === "apiKeyInvalid") {
@@ -93,7 +98,7 @@ async function fetchNews(query = "", category = "") {
     if (!data.articles || !data.articles.length) {
       showError("No news found for that search.", false);
     } else {
-      renderNews(data.articles);
+      await renderNews(data.articles);
     }
   } catch (err) {
     loadingState.classList.add("hidden");
@@ -139,20 +144,53 @@ if (searchInput) {
   searchInput.addEventListener("input", e => debouncedSearch(e.target.value));
 }
 
+// Helper to pre-verify image URLs before injecting them to the DOM (with 1.5s timeout)
+function checkImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      resolve(false);
+    }, 1500);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = url;
+  });
+}
+
 // Render News Card Grid
-function renderNews(articles) {
+async function renderNews(articles) {
   newsGrid.innerHTML = "";
   
-  // Filter out any articles that do not have a valid urlToImage
+  // Filter out any articles that do not have a valid urlToImage string
   const filteredArticles = articles.filter(article => {
     return article.urlToImage && article.urlToImage !== "null" && article.urlToImage.trim() !== "";
   });
 
+  // Pre-verify image assets in parallel to ensure every card contains a working image
+  const checkedArticles = await Promise.all(
+    filteredArticles.map(async (article) => {
+      const isWorking = await checkImage(article.urlToImage);
+      return isWorking ? article : null;
+    })
+  );
+
+  // Filter out any failed images (null values)
+  const workingArticles = checkedArticles.filter(article => article !== null);
+
   // Keep exactly 15 articles (equivalent to 5 rows of 3 columns on desktop) to maintain equality
-  const finalArticles = filteredArticles.slice(0, 15);
+  const finalArticles = workingArticles.slice(0, 15);
 
   if (finalArticles.length === 0) {
-    showError("No news articles with images found.", false);
+    showError("No news articles with working images found.", false);
     return;
   }
 
@@ -169,8 +207,7 @@ function renderNews(articles) {
     const articleUrl = article.url || "#";
 
     card.innerHTML = `
-      <img src="${article.urlToImage}" onerror="this.closest('.card').remove();"
-      style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;">
+      <img src="${article.urlToImage}" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;">
       <div style="padding:16px; display: flex; flex-direction: column; flex: 1;">
         <div>
           <span class="badge">${sourceName}</span>

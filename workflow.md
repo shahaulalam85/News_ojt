@@ -86,6 +86,7 @@ flowchart TD
 4. **Execute Request**: The network request wraps the NewsAPI URL with the **AllOrigins CORS Proxy** (`https://api.allorigins.win/raw?url=`) and is fetched asynchronously. This allows the application to execute queries directly from local files (`file://` protocol) without triggering CORS or NewsAPI browser origin restriction blocks.
 5. **Handle Success**:
    - If the response is successful (`res.ok`), it parses the JSON structure.
+   - **Race-Condition Prevention**: It verifies if the resolved query and category match the active client state (`currentQuery` and `currentCategory`). If the user clicked another tab or typed in the search field while the request was in-flight, the old request is discarded.
    - It checks if the parsed object contains backend API errors (e.g. `data.status === "error"`). If an error is returned through the proxy, it maps the code (e.g. `apiKeyInvalid` to status 401, `rateLimited` to status 429) and throws an exception to be processed by the catch block.
    - If the returned articles array is empty, it triggers `showError("No news found for that search.", false)`.
    - If articles exist, it hides the loading state, shows the grid, and calls `renderNews(articles)`.
@@ -100,17 +101,18 @@ flowchart TD
 Once raw news data is successfully fetched, `renderNews(articles)` compiles card elements dynamically:
 
 1. **Clear Grid**: The grid's inner HTML is reset (`newsGrid.innerHTML = ""`).
-2. **Filter & Slice**: The articles array is filtered to keep only items with images. The list is then sliced to exactly 15 articles (`articles.slice(0, 15)`) to fill exactly 5 rows of 3 cards on desktop view, ensuring visual symmetry across sections.
-3. **Card Assembly Loop**: For each remaining article object, a parent `.card` `div` is created.
-4. **Safety Fallbacks**:
-   - **Image**: If the API's `urlToImage` is missing, the article is filtered out and is not rendered at all. If an image URL exists but fails to load (due to CORS or 404) during runtime, an `onerror` handler removes the entire `.card` element from the DOM. This ensures that every news card shown always contains a successfully loaded, high-fidelity image.
+2. **Pre-Verify & Filter**: The articles array is filtered to exclude items missing an image URL. Then, using an in-memory `Image` object and `Promise.all`, it asynchronously tests every image's availability in parallel with a **1.5-second timeout**. Any article with a broken, forbidden (403), expired (404), or hung image link is immediately skipped, preventing the UI from hanging on slow servers.
+3. **Slice to 5 Rows**: The list of working articles is sliced to exactly 15 (`workingArticles.slice(0, 15)`) to fill exactly 5 rows of 3 cards on desktop view, ensuring visual symmetry across sections.
+4. **Card Assembly Loop**: For each remaining article object, a parent `.card` `div` is created.
+5. **Safety Fallbacks**:
+   - **Image**: Every image is pre-verified to be functional before injection, so no runtime broken placeholders or empty grey frames can appear.
    - **Source**: Defaults to `"News"` if `article.source.name` is null.
    - **Date**: Formatted to a localized string (`toLocaleDateString()`), defaulting to today's date if missing.
    - **Title & Links**: Configured safely to avoid runtime exceptions.
-4. **Staggered Animations**:
+6. **Staggered Animations**:
    - Each card is assigned the class `.fade-up` which triggers a CSS keyframe animation moving the element up while increasing opacity.
    - To make the grid feel alive, `card.style.animationDelay` is calculated dynamically based on its index: `(i * 0.06)s`. This creates a cascading, wave-like entrance effect.
-5. **DOM Append**: The card element is appended to `#news-grid`.
+7. **DOM Append**: The card element is appended to `#news-grid`.
 
 ---
 
