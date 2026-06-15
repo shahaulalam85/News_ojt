@@ -63,16 +63,35 @@ async function fetchNews(query = "", category = "") {
       }
       data = await res.json();
     } else {
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url.toString())}`;
-      const res = await fetch(proxyUrl);
-      if (!res.ok) {
-        throw { status: res.status };
+      // Primary Vercel Serverless Function path
+      const vercelUrl = `/api/news?apiKey=${apiKey}&category=${category || ''}&query=${query || ''}`;
+      
+      let res;
+      try {
+        res = await fetch(vercelUrl);
+      } catch (e) {
+        // Fetch exception (like file:// protocol offline blocks) triggers AllOrigins fallback
+        res = { status: 404, ok: false };
       }
-      const wrapper = await res.json();
-      if (!wrapper || !wrapper.contents) {
-        throw { status: 502 };
+
+      if (res.status === 404) {
+        // Fallback to AllOrigins proxy if serverless endpoint is not deployed/accessible (e.g. on file:// protocol)
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url.toString())}`;
+        const proxyRes = await fetch(proxyUrl);
+        if (!proxyRes.ok) {
+          throw { status: proxyRes.status };
+        }
+        const wrapper = await proxyRes.json();
+        if (!wrapper || !wrapper.contents) {
+          throw { status: 502 };
+        }
+        data = JSON.parse(wrapper.contents);
+      } else {
+        if (!res.ok) {
+          throw { status: res.status };
+        }
+        data = await res.json();
       }
-      data = JSON.parse(wrapper.contents);
     }
     
     // Ignore results if user changed tabs or typed another search while request was in-flight

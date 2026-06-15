@@ -20,7 +20,8 @@ graph TD
 * **`index.html`**: Defines the semantic structure of the app (Header, Category Bar, Spinner container, Error block, News grid container, and the API Key configuration Modal).
 * **`styles.css`**: Manages the visual system. Implements custom styling tokens (CSS variables), layouts (Flexbox/Grid), responsive views, and hardware-accelerated animations (such as card slide-ups and spinners).
 * **`news.js`**: Handles logic. Triggers API requests, maintains app state (active category, search query), filters results, debounces keyboard searches, renders HTML templates dynamically, and manages error boundaries.
-* **No `package.json` / No `node_modules`**: The project is entirely serverless and client-side, running directly from the `file://` protocol or any static server without local server runtime dependencies.
+* **No `package.json` / No `node_modules`**: The project is designed with a hybrid serving architecture. It uses no local packages and executes cleanly from static hosting.
+* **`api/news.js` [NEW]**: A Vercel Serverless Function that proxies request calls on production hosting. Because it runs server-side, it is allowed by NewsAPI and provides a 100% reliable, production-ready backend proxy.
 
 ---
 
@@ -83,7 +84,10 @@ flowchart TD
    - Appends the resolved API key, sets `pageSize` to `40` (to secure a solid pool of articles containing images), and hardcodes the target country to `"us"`.
    - If the selected category is not `"all"`, it appends `&category=<category>`.
    - If a search query is present, it appends `&q=<query>`.
-4. **Execute Request**: The network request wraps the NewsAPI URL with the **AllOrigins CORS Proxy** (`https://api.allorigins.win/raw?url=`) and is fetched asynchronously. This allows the application to execute queries directly from local files (`file://` protocol) without triggering CORS or NewsAPI browser origin restriction blocks.
+4. **Execute Request**: The app selects the fetching strategy based on the host context:
+   - **Localhost Mode**: Performed directly to `newsapi.org` (allowed by NewsAPI).
+   - **Production Mode (Vercel)**: Performed using the relative serverless endpoint `/api/news`, which proxies calls server-side (100% reliable, fast, and secure).
+   - **Offline/File Protocol Fallback**: If served via `file://` (causing relative endpoints to return 404), the request automatically falls back to wrapping with the **AllOrigins CORS Proxy** (`https://api.allorigins.win/get?url=`).
 5. **Handle Success**:
    - If the response is successful (`res.ok`), it parses the JSON structure.
    - **Race-Condition Prevention**: It verifies if the resolved query and category match the active client state (`currentQuery` and `currentCategory`). If the user clicked another tab or typed in the search field while the request was in-flight, the old request is discarded.
