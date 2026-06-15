@@ -53,11 +53,38 @@ async function fetchNews(query = "", category = "") {
   }
 
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw { status: res.status };
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    let data;
+
+    if (isLocalhost) {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw { status: res.status };
+      }
+      data = await res.json();
+    } else {
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url.toString())}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) {
+        throw { status: res.status };
+      }
+      const wrapper = await res.json();
+      if (!wrapper || !wrapper.contents) {
+        throw { status: 502 };
+      }
+      data = JSON.parse(wrapper.contents);
     }
-    const data = await res.json();
+    
+    // Handle NewsAPI backend errors returned through the proxy
+    if (data.status === "error") {
+      if (data.code === "apiKeyInvalid") {
+        throw { status: 401 };
+      } else if (data.code === "rateLimited") {
+        throw { status: 429 };
+      } else {
+        throw { status: 400, message: data.message };
+      }
+    }
 
     // Hide #loading-state, show #news-grid
     loadingState.classList.add("hidden");
@@ -75,6 +102,8 @@ async function fetchNews(query = "", category = "") {
       showError("Invalid API key. Check your configuration.", true);
     } else if (err && err.status === 429) {
       showError("Rate limit hit (100 req/day on free plan). Wait and retry.", true);
+    } else if (err && err.status === 400 && err.message) {
+      showError(err.message, true);
     } else {
       showError("Network error. Check your connection.", true);
     }

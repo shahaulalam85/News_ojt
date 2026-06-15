@@ -13,26 +13,16 @@ NewsFlow is a premium, responsive, and high-fidelity single-page web application
 
 ## Getting Started
 
-Follow these steps to run the application locally:
+Because the application uses an online CORS proxy to bypass browser restrictions, you do not need to install any packages (`node_modules`) or run local dev servers (like Vite).
 
-### 1. Clone & Initialize
-Open your terminal inside the project directory and install the development dependencies:
-```bash
-npm install
-```
+### 1. Open the Application
+Simply double-click the **`index.html`** file in your file explorer to open the application directly in any web browser (using the `file://` protocol).
 
-### 2. Start the Development Server
-Run the Vite development server:
-```bash
-npm run dev
-```
-The server will start running locally at: **`http://localhost:5173`**.
+Alternatively, you can run a simple, zero-dependency local server if you prefer (e.g. using Python: `python -m http.server` and opening `http://localhost:8000`).
 
-*(Note: NewsAPI developer accounts restrict request origins to `localhost`. Running the server ensures all requests succeed).*
-
-### 3. Setup Your NewsAPI Key
+### 2. Setup Your NewsAPI Key
 1. Go to [newsapi.org](https://newsapi.org) and register for a free Developer API Key.
-2. Open **`http://localhost:5173`** in your browser.
+2. Open the application in your browser.
 3. Click the key settings icon in the top right of the header.
 4. Paste your API key in the configuration modal and click **Save Configuration**.
 5. The application will instantly refresh and fetch live headlines!
