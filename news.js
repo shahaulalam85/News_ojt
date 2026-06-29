@@ -46,11 +46,27 @@ function displayNews(articles) {
     const card = document.createElement("div");
 
     card.className = "card";
+    const imgUrl = article.urlToImage
+      ? article.urlToImage
+      : "https://placehold.co/400x180/1a1a2e/555555?text=No+Image";
+
+    // Format date: "28/06/2026"
+    const date = article.publishedAt
+      ? new Date(article.publishedAt).toLocaleDateString("en-GB")
+      : "";
+
+    // Source name: "ASSOCIATED PRESS"
+    const source = article.source?.name
+      ? article.source.name.toUpperCase()
+      : "";
+
+    const sourceColor = getSourceColor(article.source?.name || "");
 
     card.innerHTML = `
-            <img src="${article.urlToImage}" onerror="this.style.display='none'">
+            <img src="${article.urlToImage}" onerror="this.src='https://placehold.co/400x180/1a1a2e/555555?text=No+Image'">
+            <span class="source-badge" style="background:${sourceColor}">${source}</span>
             <h3>${article.title}</h3>
-            <p>${article.description || ""}</p>
+            <p class="date">${date}</p>
             <a href="${article.url}" target="_blank">Read More</a>
         `;
 
@@ -118,6 +134,48 @@ saveApiBtn.addEventListener("click", () => {
   }
   apiModal.classList.add("hidden");
 });
+
+// Assign a unique color per source
+function getSourceColor(sourceName) {
+  const colors = {
+    "associated press": "#c0392b",   // red
+    "reuters": "#e67e22",   // orange
+    "bbc news": "#c0392b",   // red
+    "cnn": "#cc0000",   // dark red
+    "the verge": "#e91e8c",   // pink
+    "techcrunch": "#0a8f08",   // green
+    "politico": "#2980b9",   // blue
+    "financial times": "#b8860b",   // gold
+    "mma fighting": "#6c3483",   // purple
+    "suntimes.com": "#16a085",   // teal
+  };
+
+  const key = sourceName.toLowerCase();
+
+  // Check if any key is contained in the source name
+  for (const [name, color] of Object.entries(colors)) {
+    if (key.includes(name)) return color;
+  }
+
+  return "#4f46e5";   // default indigo fallback
+}
+
+// toggle
+// ADDED — dark mode toggle
+const darkToggle = document.getElementById("dark-toggle");
+
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark");
+  darkToggle.textContent = "☀️";
+}
+
+darkToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  darkToggle.textContent = isDark ? "☀️" : "🌙";
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+});
+
 
 // Load Default News
 fetchNews();
