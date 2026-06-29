@@ -1,5 +1,4 @@
-const API_KEY = "9f8e0a6134b54c13925a0316eadbc357";
-let userKey = API_KEY;
+let userKey = "";
 
 const newsGrid = document.getElementById("news-grid"); // 51
 const searchInput = document.getElementById("search-input"); // 20
