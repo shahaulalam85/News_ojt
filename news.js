@@ -1,5 +1,5 @@
-const API_KEY = "9f8e0a6134b54c13925a0316eadbc357";
-let userKey = API_KEY;
+// const API_KEY = "9f8e0a6134b54c13925a0316eadbc357";
+// let userKey = API_KEY;
 
 const newsGrid = document.getElementById("news-grid"); // 51
 const searchInput = document.getElementById("search-input"); // 20
@@ -16,7 +16,8 @@ async function fetchNews(category = "general") {
   if (category === "all") {
     category = "general";
   }
-  const url = `https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${userKey}`;
+  // const url = `https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${userKey}`;
+  const url = `/api/news?category=${category}`;
 
   // try/catch so a failed request shows a message instead of breaking the page
   try {
